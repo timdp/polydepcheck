@@ -24,7 +24,7 @@
   "scripts": {
     "test": "eslint \"**/*.js\"",
     "format": "prettier-eslint --write \"$PWD/**/*.js\"",
-    "postinstall": "husky install"
+    "prepare": "husky install"
   },
   "dependencies": {
     "chalk": "^5.0.1",
