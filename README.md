@@ -1,6 +1,6 @@
 # polydepcheck
 
-[![npm](https://img.shields.io/npm/v/polydepcheck.svg)](https://www.npmjs.com/package/polydepcheck) [![Dependencies](https://david-dm.org/timdp/polydepcheck/status.svg)](https://david-dm.org/timdp/polydepcheck) [![JavaScript Standard Style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](https://standardjs.com)
+[![npm](https://img.shields.io/npm/v/polydepcheck.svg)](https://www.npmjs.com/package/polydepcheck) [![JavaScript Standard Style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](https://standardjs.com)
 
 [Depcheck](https://www.npmjs.com/package/depcheck) for monorepos.
 
