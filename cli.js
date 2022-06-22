@@ -8,9 +8,9 @@ import fs from 'fs-extra'
 import { globby } from 'globby'
 import micromatch from 'micromatch'
 import minimist from 'minimist'
-import os from 'os'
+import os from 'node:os'
+import path from 'node:path'
 import pMap from 'p-map'
-import path from 'path'
 import { readPackage } from 'read-pkg'
 
 const DEFAULT_CONFIG = {
