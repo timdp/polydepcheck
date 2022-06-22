@@ -1,0 +1,60 @@
+{
+  "name": "polydepcheck",
+  "description": "Depcheck for monorepos.",
+  "version": "0.0.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timdp/polydepcheck.git"
+  },
+  "author": {
+    "name": "Tim De Pauw",
+    "url": "https://tmdpw.eu"
+  },
+  "type": "module",
+  "files": [
+    "cli.js"
+  ],
+  "bin": {
+    "polydepcheck": "cli.js"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "scripts": {
+    "test": "eslint \"**/*.js\"",
+    "format": "prettier-eslint --write \"$PWD/**/*.js\"",
+    "postinstall": "husky install"
+  },
+  "dependencies": {
+    "chalk": "^5.0.1",
+    "depcheck": "^1.4.3",
+    "fs-extra": "^10.1.0",
+    "globby": "^13.1.2",
+    "hard-rejection": "^2.1.0",
+    "micromatch": "^4.0.5",
+    "minimist": "^1.2.6",
+    "p-map": "^5.5.0",
+    "read-pkg": "^7.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.18.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-n": "^15.2.3",
+    "eslint-plugin-promise": "^6.0.0",
+    "eslint-plugin-simple-import-sort": "^7.0.0",
+    "husky": "^8.0.1",
+    "lint-staged": "^13.0.2",
+    "prettier-eslint-cli": "^6.0.1"
+  },
+  "lint-staged": {
+    "*.{js,ts}": [
+      "prettier-eslint --write"
+    ]
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/timdp"
+  }
+}

@@ -1,0 +1,12 @@
+Thumbs.db
+.DS_Store
+/.idea/
+/.vscode/
+npm-debug.log
+yarn-error.log
+lerna-debug.log
+node_modules/
+dist/
+.turbo/
+.nyc_output/
+*.tsbuildinfo
