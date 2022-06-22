@@ -7,6 +7,3 @@ yarn-error.log
 lerna-debug.log
 node_modules/
 dist/
-.turbo/
-.nyc_output/
-*.tsbuildinfo
