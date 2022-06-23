@@ -13,10 +13,11 @@
   },
   "type": "module",
   "files": [
-    "cli.js"
+    "bin/",
+    "lib/"
   ],
   "bin": {
-    "polydepcheck": "cli.js"
+    "polydepcheck": "bin/polydepcheck.js"
   },
   "engines": {
     "node": ">=14"
@@ -36,6 +37,7 @@
     "micromatch": "^4.0.5",
     "minimist": "^1.2.6",
     "p-map": "^5.5.0",
+    "piscina": "^3.2.0",
     "read-pkg": "^7.1.0"
   },
   "devDependencies": {
