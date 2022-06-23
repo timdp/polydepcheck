@@ -2,8 +2,10 @@
 
 import 'hard-rejection/register.js'
 
+import Bottleneck from 'bottleneck'
 import chalk from 'chalk'
 import depcheck from 'depcheck'
+import { execa } from 'execa'
 import fs from 'fs-extra'
 import { globby } from 'globby'
 import micromatch from 'micromatch'
@@ -18,8 +20,11 @@ const DEFAULT_CONFIG = {
   ignoreUnused: {},
   ignorePatterns: [],
   concurrency: os.cpus().length,
-  verbose: false
+  verbose: false,
+  fix: false
 }
+
+const limiter = new Bottleneck({ maxConcurrent: 1 })
 
 const filter = (depNames, pkgName, ignores) => {
   const patterns = [...(ignores['*'] ?? []), ...(ignores[pkgName] ?? [])]
@@ -46,7 +51,40 @@ const print = (
   )
 }
 
-const checkAndReport = async (pkgDir, pkgName, config, pkgColWidth) => {
+const installMissing = async (pkgName, allMissing, pkgNames, pkgNameFixed) => {
+  const localMissing = allMissing.filter((name) => pkgNames.includes(name))
+  if (localMissing.length === 0) {
+    return
+  }
+  print(
+    pkgNameFixed,
+    chalk.red,
+    'Missing:',
+    allMissing.map((name) =>
+      localMissing.includes(name) ? chalk.dim(name) : name
+    ),
+    true
+  )
+  print(pkgNameFixed, chalk.cyan, 'Adding:', localMissing)
+  await execa(
+    'yarn',
+    [
+      'workspace',
+      pkgName,
+      'add',
+      ...localMissing.map((name) => name + '@workspace:*')
+    ],
+    { stdio: ['ignore', 'inherit', 'inherit'] }
+  )
+}
+
+const checkAndReport = async (
+  pkgDir,
+  pkgName,
+  config,
+  pkgNames,
+  pkgColWidth
+) => {
   const pkgNameFixed = pkgName.padEnd(pkgColWidth)
   const { dependencies, devDependencies, missing } = await depcheck(pkgDir, {
     ignorePatterns: config.ignorePatterns
@@ -56,7 +94,12 @@ const checkAndReport = async (pkgDir, pkgName, config, pkgColWidth) => {
     pkgName,
     config.ignoreMissing
   )
-  if (missingNames.length > 0) {
+  if (config.fix) {
+    await limiter.schedule(
+      async () =>
+        await installMissing(pkgName, missingNames, pkgNames, pkgNameFixed)
+    )
+  } else if (missingNames.length > 0) {
     print(pkgNameFixed, chalk.red, 'Missing:', missingNames, true)
   }
   const unusedNames = filter(
@@ -89,6 +132,9 @@ const buildConfig = async () => {
   if (typeof argv.verbose === 'boolean') {
     config.verbose = argv.verbose
   }
+  if (typeof argv.fix === 'boolean') {
+    config.fix = argv.fix
+  }
   return config
 }
 
@@ -111,7 +157,13 @@ const main = async () => {
   const results = await pMap(
     pkgDirs,
     async (pkgDir, index) =>
-      await checkAndReport(pkgDir, pkgNames[index], config, pkgColWidth),
+      await checkAndReport(
+        pkgDir,
+        pkgNames[index],
+        config,
+        pkgNames,
+        pkgColWidth
+      ),
     { concurrency: config.concurrency }
   )
   if (results.some(Boolean)) {
