@@ -9,9 +9,8 @@ import { execa } from 'execa'
 import fs from 'fs-extra'
 import { globby } from 'globby'
 import micromatch from 'micromatch'
-import minimist from 'minimist'
+import mri from 'mri'
 import os from 'node:os'
-import path from 'node:path'
 import pMap from 'p-map'
 import { readPackage } from 'read-pkg'
 
@@ -78,6 +77,26 @@ const installMissing = async (pkgName, allMissing, pkgNames, pkgNameFixed) => {
   )
 }
 
+const removeUnused = async (pkgName, allUnused, pkgNames, pkgNameFixed) => {
+  const localUnused = allUnused.filter((name) => pkgNames.includes(name))
+  if (localUnused.length === 0) {
+    return
+  }
+  print(
+    pkgNameFixed,
+    chalk.yellow,
+    'Unused:',
+    allUnused.map((name) =>
+      localUnused.includes(name) ? chalk.dim(name) : name
+    ),
+    true
+  )
+  print(pkgNameFixed, chalk.cyan, 'Removing:', localUnused)
+  await execa('yarn', ['workspace', pkgName, 'remove', ...localUnused], {
+    stdio: ['ignore', 'inherit', 'inherit']
+  })
+}
+
 const checkAndReport = async (
   pkgDir,
   pkgName,
@@ -107,7 +126,12 @@ const checkAndReport = async (
     pkgName,
     config.ignoreUnused
   )
-  if (unusedNames.length > 0) {
+  if (config.fix) {
+    await limiter.schedule(
+      async () =>
+        await removeUnused(pkgName, unusedNames, pkgNames, pkgNameFixed)
+    )
+  } else if (unusedNames.length > 0) {
     print(pkgNameFixed, chalk.yellow, 'Unused:', unusedNames, true)
   }
   const failureCount = missingNames.length + unusedNames.length
@@ -127,7 +151,7 @@ const buildConfig = async () => {
     }
   }
   const config = { ...DEFAULT_CONFIG, ...rcConfig }
-  const argv = minimist(process.argv.slice(2))
+  const argv = mri(process.argv.slice(2))
   // TODO Support other options
   if (typeof argv.verbose === 'boolean') {
     config.verbose = argv.verbose
