@@ -25,16 +25,8 @@ const DEFAULT_CONFIG = {
 
 const limiter = new Bottleneck({ maxConcurrent: 1 })
 
-const filter = (depNames, pkgName, ignores) => {
-  const patterns = [...(ignores['*'] ?? []), ...(ignores[pkgName] ?? [])]
-  if (patterns.length === 0) {
-    return depNames
-  }
-  return micromatch.not(depNames, patterns)
-}
-
 const print = (
-  pkgNameFixed,
+  pkgNameFixedWidth,
   style,
   label,
   depNames = null,
@@ -43,101 +35,165 @@ const print = (
   ;(isError ? console.error : console.info)(
     style('■') +
       ' ' +
-      pkgNameFixed +
+      pkgNameFixedWidth +
       ' ' +
       style(label) +
       (depNames != null ? ' ' + depNames.join(' ') : '')
   )
 }
 
-const installMissing = async (pkgName, allMissing, pkgNames, pkgNameFixed) => {
-  const localMissing = allMissing.filter((name) => pkgNames.includes(name))
-  if (localMissing.length === 0) {
+const applyFix = async (
+  dependentPkgName,
+  dependentPkgNameFixedWidth,
+  problematicDepNames,
+  workspacePkgNames,
+  fixCommand,
+  shouldAddVersion,
+  style,
+  labelProblematic,
+  labelOperation
+) => {
+  const workspaceProblematicPkgs = problematicDepNames.filter((name) =>
+    workspacePkgNames.includes(name)
+  )
+  if (workspaceProblematicPkgs.length === 0) {
     return
   }
   print(
-    pkgNameFixed,
-    chalk.red,
-    'Missing:',
-    allMissing.map((name) =>
-      localMissing.includes(name) ? chalk.dim(name) : name
+    dependentPkgNameFixedWidth,
+    style,
+    labelProblematic,
+    problematicDepNames.map((name) =>
+      workspaceProblematicPkgs.includes(name) ? chalk.dim(name) : name
     ),
     true
   )
-  print(pkgNameFixed, chalk.cyan, 'Adding:', localMissing)
+  print(
+    dependentPkgNameFixedWidth,
+    chalk.cyan,
+    labelOperation,
+    workspaceProblematicPkgs
+  )
   await execa(
     'yarn',
     [
       'workspace',
-      pkgName,
-      'add',
-      ...localMissing.map((name) => name + '@workspace:*')
+      dependentPkgName,
+      fixCommand,
+      ...(shouldAddVersion
+        ? workspaceProblematicPkgs.map((name) => name + '@workspace:*')
+        : workspaceProblematicPkgs)
     ],
     { stdio: ['ignore', 'inherit', 'inherit'] }
   )
 }
 
-const removeUnused = async (pkgName, allUnused, pkgNames, pkgNameFixed) => {
-  const localUnused = allUnused.filter((name) => pkgNames.includes(name))
-  if (localUnused.length === 0) {
+const reportAndMaybeFix = async (
+  dependentPkgName,
+  dependentPkgNameFixedWidth,
+  problematicDepNames,
+  workspacePkgNames,
+  shouldFix,
+  fixCommand,
+  shouldAddVersion,
+  style,
+  labelProblematic,
+  labelOperation
+) => {
+  if (problematicDepNames.length === 0) {
     return
   }
-  print(
-    pkgNameFixed,
-    chalk.yellow,
-    'Unused:',
-    allUnused.map((name) =>
-      localUnused.includes(name) ? chalk.dim(name) : name
-    ),
-    true
-  )
-  print(pkgNameFixed, chalk.cyan, 'Removing:', localUnused)
-  await execa('yarn', ['workspace', pkgName, 'remove', ...localUnused], {
-    stdio: ['ignore', 'inherit', 'inherit']
-  })
+  if (shouldFix) {
+    await limiter.schedule(
+      async () =>
+        await applyFix(
+          dependentPkgName,
+          dependentPkgNameFixedWidth,
+          problematicDepNames,
+          workspacePkgNames,
+          fixCommand,
+          shouldAddVersion,
+          style,
+          labelProblematic,
+          labelOperation
+        )
+    )
+  } else {
+    print(
+      dependentPkgNameFixedWidth,
+      style,
+      labelProblematic,
+      problematicDepNames,
+      true
+    )
+  }
+}
+
+const applyIgnoreList = (depNames, pkgName, ignores) => {
+  const patterns = [...(ignores['*'] ?? []), ...(ignores[pkgName] ?? [])]
+  if (patterns.length === 0) {
+    return depNames
+  }
+  return micromatch.not(depNames, patterns)
 }
 
 const checkAndReport = async (
-  pkgDir,
-  pkgName,
+  dependentPkgDir,
+  dependentPkgName,
   config,
-  pkgNames,
+  workspacePkgNames,
   pkgColWidth
 ) => {
-  const pkgNameFixed = pkgName.padEnd(pkgColWidth)
-  const { dependencies, devDependencies, missing } = await depcheck(pkgDir, {
-    ignorePatterns: config.ignorePatterns
-  })
-  const missingNames = filter(
+  const pkgNameFixedWidth = dependentPkgName.padEnd(pkgColWidth)
+
+  const { dependencies, devDependencies, missing } = await depcheck(
+    dependentPkgDir,
+    {
+      ignorePatterns: config.ignorePatterns
+    }
+  )
+
+  const missingPkgNames = applyIgnoreList(
     Object.keys(missing),
-    pkgName,
+    dependentPkgName,
     config.ignoreMissing
   )
-  if (config.fix) {
-    await limiter.schedule(
-      async () =>
-        await installMissing(pkgName, missingNames, pkgNames, pkgNameFixed)
-    )
-  } else if (missingNames.length > 0) {
-    print(pkgNameFixed, chalk.red, 'Missing:', missingNames, true)
-  }
-  const unusedNames = filter(
+  await reportAndMaybeFix(
+    dependentPkgName,
+    pkgNameFixedWidth,
+    missingPkgNames,
+    workspacePkgNames,
+    config.fix,
+    'add',
+    true,
+    chalk.red,
+    'Missing:',
+    'Adding:'
+  )
+
+  const unusedPkgNames = applyIgnoreList(
     [...dependencies, ...devDependencies],
-    pkgName,
+    dependentPkgName,
     config.ignoreUnused
   )
-  if (config.fix) {
-    await limiter.schedule(
-      async () =>
-        await removeUnused(pkgName, unusedNames, pkgNames, pkgNameFixed)
-    )
-  } else if (unusedNames.length > 0) {
-    print(pkgNameFixed, chalk.yellow, 'Unused:', unusedNames, true)
-  }
-  const failureCount = missingNames.length + unusedNames.length
+  await reportAndMaybeFix(
+    dependentPkgName,
+    pkgNameFixedWidth,
+    unusedPkgNames,
+    workspacePkgNames,
+    config.fix,
+    'remove',
+    false,
+    chalk.yellow,
+    'Unused:',
+    'Removing:'
+  )
+
+  const failureCount = missingPkgNames.length + unusedPkgNames.length
   if (config.verbose && failureCount === 0) {
-    print(pkgNameFixed, chalk.green, 'OK')
+    print(pkgNameFixedWidth, chalk.green, 'OK')
   }
+
   return failureCount
 }
 
@@ -169,12 +225,12 @@ const main = async () => {
     onlyDirectories: true,
     absolute: true
   })
-  const pkgNames = await pMap(
+  const workspacePkgNames = await pMap(
     pkgDirs,
     async (pkgDir) => (await readPackage({ cwd: pkgDir })).name,
     { concurrency: config.concurrency }
   )
-  const pkgColWidth = pkgNames.reduce(
+  const pkgColWidth = workspacePkgNames.reduce(
     (max, pkgName) => Math.max(max, pkgName.length),
     0
   )
@@ -183,9 +239,9 @@ const main = async () => {
     async (pkgDir, index) =>
       await checkAndReport(
         pkgDir,
-        pkgNames[index],
+        workspacePkgNames[index],
         config,
-        pkgNames,
+        workspacePkgNames,
         pkgColWidth
       ),
     { concurrency: config.concurrency }
