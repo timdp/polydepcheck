@@ -56,9 +56,6 @@ const applyFix = async (
   const workspaceProblematicPkgs = problematicDepNames.filter((name) =>
     workspacePkgNames.includes(name)
   )
-  if (workspaceProblematicPkgs.length === 0) {
-    return
-  }
   print(
     dependentPkgNameFixedWidth,
     style,
@@ -68,6 +65,9 @@ const applyFix = async (
     ),
     true
   )
+  if (workspaceProblematicPkgs.length === 0) {
+    return
+  }
   print(
     dependentPkgNameFixedWidth,
     chalk.cyan,
