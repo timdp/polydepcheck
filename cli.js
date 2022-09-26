@@ -2,6 +2,8 @@
 
 import 'hard-rejection/register.js'
 
+import os from 'node:os'
+
 import Bottleneck from 'bottleneck'
 import chalk from 'chalk'
 import depcheck from 'depcheck'
@@ -10,7 +12,6 @@ import fs from 'fs-extra'
 import { globby } from 'globby'
 import micromatch from 'micromatch'
 import mri from 'mri'
-import os from 'node:os'
 import pMap from 'p-map'
 import { readPackage } from 'read-pkg'
 
