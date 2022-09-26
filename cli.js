@@ -6,9 +6,9 @@ import os from 'node:os'
 
 import Bottleneck from 'bottleneck'
 import chalk from 'chalk'
+import { cosmiconfig } from 'cosmiconfig'
 import depcheck from 'depcheck'
 import { execa } from 'execa'
-import fs from 'fs-extra'
 import { globby } from 'globby'
 import micromatch from 'micromatch'
 import mri from 'mri'
@@ -199,15 +199,8 @@ const checkAndReport = async (
 }
 
 const buildConfig = async () => {
-  let rcConfig = null
-  try {
-    rcConfig = await fs.readJson('.polydepcheckrc.json')
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      throw error
-    }
-  }
-  const config = { ...DEFAULT_CONFIG, ...rcConfig }
+  const result = await cosmiconfig('polydepcheck').search()
+  const config = { ...DEFAULT_CONFIG, ...result?.config }
   const argv = mri(process.argv.slice(2))
   // TODO Support other options
   if (typeof argv.verbose === 'boolean') {

@@ -14,7 +14,8 @@ npx polydepcheck
 
 ## Configuration
 
-Create `.polydepcheckrc.json` at the monorepo root.
+Create `.polydepcheckrc.json` at the monorepo root. Alternatively, use any
+format supported by [cosmiconfig](https://www.npmjs.com/package/cosmiconfig).
 
 For now, see the [Swirly](https://github.com/timdp/swirly) monorepo for an
 example setup.
