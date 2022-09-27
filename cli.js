@@ -19,6 +19,7 @@ const DEFAULT_CONFIG = {
   ignoreMissing: {},
   ignoreUnused: {},
   ignorePatterns: [],
+  depcheckOptions: {},
   concurrency: os.cpus().length,
   verbose: false,
   fix: false
@@ -150,7 +151,8 @@ const checkAndReport = async (
   const { dependencies, devDependencies, missing } = await depcheck(
     dependentPkgDir,
     {
-      ignorePatterns: config.ignorePatterns
+      ignorePatterns: config.ignorePatterns,
+      ...config.depcheckOptions
     }
   )
 
